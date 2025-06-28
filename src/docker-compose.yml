@@ -1,0 +1,90 @@
+services:
+  order-service:
+    container_name: order-service
+    image: src:order-service
+    build:
+      context: ./order
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      - order-db
+    networks:
+      - shop-network
+
+  order-db:
+    image: postgres:13
+    container_name: order-db
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - order-db-data:/var/lib/postgresql/data
+    networks:
+      - shop-network
+    ports:
+      - "5430:5432"
+
+  payments-service:
+    container_name: payment-service
+    image: src:payments-service
+    build:
+      context: ./payment
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      - payments-db
+    networks:
+      - shop-network
+
+  gateway:
+    container_name: gateway
+    image: src:gateway
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8084:8080"
+    networks:
+      - shop-network
+
+  payments-db:
+    image: postgres:13
+    container_name: payments-db
+    environment:
+      POSTGRES_DB: payments_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - payments-db-data:/var/lib/postgresql/data
+    networks:
+      - shop-network
+    ports:
+      - "5431:5432"
+
+  swagger-ui:
+    image: swaggerapi/swagger-ui:v5.22.0
+    restart: always
+    ports:
+      - "8083:8080"
+    environment:
+      URLS: >
+        [
+          { name: 'Order', url: 'http://localhost:8080/api' },
+          { name: 'Payment', url: 'http://localhost:8081/api' },
+          { name: 'Gateway', url: 'http://localhost:8084/api' }
+        ]
+
+volumes:
+  order-db-data:
+  payments-db-data:
+
+networks:
+  shop-network:
+    driver: bridge
